@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRBV LFA Order-of-Magnitude Model</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1d2320;--mut:#5d6a63;--acc:#2f6b4f;--warn:#b5560b;--line:#dfe4df}
+@media(prefers-color-scheme:dark){:root{--bg:#141a17;--card:#1d2420;--ink:#e6ece8;--mut:#9aa8a0;--acc:#7fc4a0;--warn:#f0a050;--line:#2e3a34}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header,main{max-width:1120px;margin:auto;padding:16px}
+h1{font-size:1.4rem;margin:.2rem 0}h2{font-size:1.05rem;margin:0 0 .5rem}
+.banner{background:var(--card);border-left:4px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:.88rem}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.p{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.p label{font-size:.86rem}.p small{color:var(--mut);grid-column:1/-1;font-size:.72rem;line-height:1.3}
+.p output{font-variant-numeric:tabular-nums;font-size:.86rem;text-align:right}
+input[type=range]{width:100%;grid-column:1/-1;accent-color:var(--acc)}
+.tag{font-size:.7rem;background:var(--line);border-radius:4px;padding:0 4px;margin-left:4px;color:var(--mut)}
+.warn{color:var(--warn);font-size:.86rem;margin:4px 0}
+canvas{width:100%;height:300px;display:block}
+.charts{grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:18px}
+.lg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.82rem;margin-top:8px}
+.lg span{display:inline-flex;align-items:center}.lg i{display:inline-block;width:18px;height:0;margin-right:6px}
+details{margin-top:8px;font-size:.84rem;color:var(--mut)}details summary{cursor:pointer;color:var(--acc)}
+details p{margin:.3rem 0}code{font-size:.82rem}
+table{width:100%;border-collapse:collapse;font-size:.84rem}td,th{border-bottom:1px solid var(--line);padding:5px;text-align:left;vertical-align:top}
+ol{font-size:.84rem;padding-left:1.2rem;margin:0}li{margin-bottom:4px}
+.pass{color:var(--acc)}.fail{color:var(--warn)}
+</style></head>
+<body>
+<header>
+<h1>GRBV Lateral-Flow Assay: Order-of-Magnitude Model</h1>
+<div class="banner"><b>Proof of principle only.</b> Outputs are order-of-magnitude estimates from simplified models with assumed inputs. They are not validated predictions. Tags: <b>[L]</b> literature value (verify before citing), <b>[U]</b> unverified assumption, <b>[A]</b> added by this tool beyond the brief.</div>
+</header>
+<main>
+<h2>Key results</h2>
+<div class="grid">
+<div class="card"><div id="kpi"></div><div id="warn"></div>
+<details><summary>How this works</summary>
+<p>Virions in extract N = titer × tissue mass × η<sub>ext</sub>. Concentration C = N / (N<sub>A</sub> × V<sub>buffer</sub>). Bound complexes N<sub>b</sub> = min(N, N<sub>sites</sub> × f<sub>active</sub> × θ × f<sub>kin</sub> × f<sub>transport</sub> × f<sub>hook</sub>). Signal S = i<sub>unit</sub> × N<sub>b</sub>. LOD = titer at which N<sub>b</sub> reaches the visual threshold (bisection).</p>
+<p>Assumes all extract reaches the strip, a single-site Langmuir occupancy, and a saturated detection step on the captured particle. Sources: see References.</p></details>
+</div>
+<div class="card"><h2>Model status</h2><p class="warn" style="color:var(--mut)">Move any slider. Numbers, curves and warnings update live.</p>
+<p class="warn" style="color:var(--mut)">Tags: [L] literature, not yet verified · [U] unverified assumption · [A] added beyond the brief.</p></div>
+</div>
+
+<h2>Parameters</h2>
+<div id="ctl" class="grid"></div>
+
+<h2>Curves</h2>
+<div class="grid charts">
+<div class="card"><h2>1. Binding curves (Langmuir)</h2><canvas id="c_bind"></canvas><div class="lg" id="lg_c_bind"></div>
+<details><summary>How this works</summary><p>θ = C / (C + K<sub>d</sub>), Langmuir 1918 [1]. Curves scale your K<sub>d</sub> by ×0.1, ×1 and ×10.</p></details></div>
+<div class="card"><h2>2. Concentration to intensity</h2><canvas id="c_int"></canvas><div class="lg" id="lg_c_int"></div>
+<details><summary>How this works</summary><p>I = I<sub>bg</sub> + i<sub>unit</sub> × N<sub>b</sub>(titer). Kinetic factor f<sub>kin</sub> = 1 − exp(−t<sub>inc</sub>/τ), τ = 1/(k<sub>on</sub>C + k<sub>off</sub>). Transport factor f<sub>transport</sub> = 1/Da for Da > 1, with Da = k<sub>on</sub>C δ²/D and D from Stokes–Einstein scaling [2]. Hook factor f<sub>hook</sub> = 1/(1 + C/C<sub>h</sub>) [A, empirical].</p></details></div>
+<div class="card"><h2>3. True / false positive rates vs threshold</h2><canvas id="c_roc"></canvas><div class="lg" id="lg_c_roc"></div>
+<details><summary>How this works</summary><p>Uninfected: I ~ N(I<sub>bg</sub>, σ<sub>n</sub>), σ<sub>n</sub> = √(σ<sub>reader</sub>² + σ<sub>matrix</sub>²). FPR = Q(z). Infected: titer lognormal around the titer slider (ln-SD [U]). Se = Σ w<sub>i</sub> Q(z − S<sub>i</sub>/σ<sub>n</sub>). Q is the Gaussian tail, computed with an erf approximation (Abramowitz &amp; Stegun 7.1.26) [3].</p></details></div>
+<div class="card"><h2>4. Predictive values vs prevalence</h2><canvas id="c_ppv"></canvas><div class="lg" id="lg_c_ppv"></div>
+<details><summary>How this works</summary><p>Bayes' theorem [4]: PPV = Se·p / (Se·p + FPR·(1−p)); NPV = (1−FPR)(1−p) / ((1−FPR)(1−p) + (1−Se)·p). Evaluated at the current threshold z.</p></details></div>
+</div>
+
+<h2>Industry benchmarks</h2>
+<div class="card"><table>
+<tr><th>Quantity</th><th>This model (default)</th><th>Typical literature range</th><th>Status</th></tr>
+<tr><td>Visual LOD, AuNP lateral flow</td><td>Shown in Key results</td><td>Often reported in the ng/mL range for proteins; virus LFAs commonly reach roughly 10⁵–10⁹ particles/mL [5]</td><td>Unverified range; check the cited reviews</td></tr>
+<tr><td>Antibody K<sub>d</sub></td><td>1 nM default</td><td>pM to nM [6]</td><td>[L] verify</td></tr>
+<tr><td>Aptamer K<sub>d</sub></td><td>Same slider</td><td>nM to µM [7]</td><td>[L] verify</td></tr>
+<tr><td>Antibody k<sub>on</sub></td><td>10⁶ M⁻¹s⁻¹</td><td>~10⁵–10⁶ M⁻¹s⁻¹ [6]</td><td>[L] verify</td></tr>
+<tr><td>Diffusion-limited k<sub>on</sub> ceiling</td><td>Flagged above 10⁹</td><td>~10⁹ M⁻¹s⁻¹ [8]</td><td>[L] verify</td></tr>
+<tr><td>40 nm AuNP extinction</td><td>Not used directly; i<sub>unit</sub> is scaled</td><td>ε₅₂₀ ≈ 9×10⁸ M⁻¹cm⁻¹ [9]</td><td>[L] verify</td></tr>
+</table>
+<details><summary>How this works</summary><p>Benchmarks are compared by eye; no automatic pass/fail is computed, because the literature ranges are not verified in this session.</p></details></div>
+
+<h2>Self-tests (hand-calculated cases)</h2>
+<div class="card" id="tests"></div>
+
+<h2>References</h2>
+<div class="card"><ol>
+<li>Langmuir I. The adsorption of gases on plane surfaces of glass, mica and platinum. J Am Chem Soc 1918;40:1361. [model, verified from memory]</li>
+<li>Stokes–Einstein relation for diffusivity; D ∝ M<sup>−1/3</sup> for spherical particles. Standard physical chemistry. D = 4×10⁻¹¹ m²/s at 150 kDa is an assumed reference [U].</li>
+<li>Abramowitz M, Stegun IA. Handbook of Mathematical Functions, §7.1.26. erf approximation, max error ~1.5×10⁻⁷.</li>
+<li>Bayes' theorem as applied to diagnostic tests; standard epidemiology texts (e.g., Gordis, Epidemiology). [general]</li>
+<li>Sajid M, Kawde AN, Daud M. Designs, formats and applications of lateral flow assay. J Adv Res 2015;6:689. [LOD range, verify]</li>
+<li>No source identified for antibody K<sub>d</sub> and k<sub>on</sub> ranges. Values are [U] placeholders; replace with a cited source before use.</li>
+<li>Jayasena SD. Aptamers: an emerging class of molecules. Clin Chem 1999;45:1628. [aptamer K<sub>d</sub> range, verify]</li>
+<li>Berg HC, von Hippel PH. Diffusion-controlled macromolecular interactions. Annu Rev Biophys Biophys Chem 1985;14:131. [diffusion limit, verify]</li>
+<li>Haiss W et al. Determination of size and concentration of gold nanoparticles from UV–Vis spectra. Anal Chem 2007;79:4215. [AuNP ε, verify]</li>
+<li>Koczula KM, Gallotta A. Lateral flow assays. Essays Biochem 2016;60:111. [assay times and formats, verify]</li>
+<li>Haas CN, Rose JB, Gerba CP. Quantitative Microbial Risk Assessment. Wiley, 1999. [Poisson dose-response: P = 1 − exp(−λd); ID95 gives λ = 3/ID95, verify]</li>
+</ol>
+<p class="warn" style="color:var(--mut)">Literature values were recalled from memory and have not been checked against sources in this session. Treat each entry as a lead and confirm the DOI before citing. GRBV-specific values (titer, capsid mass, capsid copy number, ID95) are [U] unverified.</p></div>
+</main>
+
+<script>
+const NA=6.02214076e23;
+const DEF=[
+{k:'m',g:0,l:'Plant tissue per sample',u:'g',d:0.1,lo:-2,hi:0,lg:1,t:'[U] typical leaf punch 0.05–0.1 g; protocol assumption'},
+{k:'rho',g:0,l:'Virion titer in tissue',u:'virions/g',d:1e9,lo:5,hi:11,lg:1,t:'[U] order-of-magnitude; GRBV titer not verified'},
+{k:'eta',g:0,l:'Extraction efficiency',u:'fraction',d:0.3,lo:0.05,hi:0.9,t:'[A] unverified; protocol-specific'},
+{k:'vb',g:0,l:'Extraction buffer volume',u:'mL',d:1,lo:0.2,hi:10,lg:1,t:'[A] protocol assumption'},
+{k:'cp',g:0,l:'Capsid protein mass',u:'kDa',d:30,lo:10,hi:100,t:'[U] not verified against sequence data for GRBV'},
+{k:'ncp',g:0,l:'Capsid proteins per virion',u:'copies',d:110,lo:60,hi:240,t:'[U] geminate-particle assumption'},
+{k:'kd',g:1,l:'Capture K_d',u:'nM',d:1,lo:-3,hi:3,lg:1,t:'[U] antibodies ~pM–nM (typical; source pending); aptamers ~nM–µM [7]'},
+{k:'kon',g:1,l:'Association rate k_on',u:'M⁻¹s⁻¹',d:1e6,lo:3,hi:9,lg:1,t:'[U] antibodies ~10⁵–10⁶ (source pending); diffusion ceiling ~10⁹ [8]'},
+{k:'tinc',g:1,l:'Incubation time',u:'min',d:10,lo:1,hi:60,t:'[L] LFA runs typically 5–20 min [10]'},
+{k:'sites',g:1,l:'Capture sites on test line',u:'sites',d:1e12,lo:9,hi:14,lg:1,t:'[A] ~1 µg IgG ≈ 4×10¹² molecules'},
+{k:'act',g:1,l:'Active fraction of sites',u:'fraction',d:0.3,lo:0.05,hi:1,t:'[A] unverified'},
+{k:'hook',g:1,l:'Hook-effect midpoint C_h',u:'nM',d:1000,lo:0,hi:6,lg:1,t:'[A] empirical; min 1 nM; unverified for GRBV'},
+{k:'delta',g:1,l:'Diffusion boundary layer δ',u:'µm',d:50,lo:0.7,hi:2.7,lg:1,t:'[A] assumed; transport-limit proxy'},
+{k:'iu',g:2,l:'Signal per bound complex',u:'a.u.',d:1e-9,lo:-12,hi:-6,lg:1,t:'[U] scaled; not converted from AuNP ε [9]'},
+{k:'nvis',g:2,l:'Visual threshold',u:'complexes',d:1e4,lo:2,hi:7,lg:1,t:'[U] visible-line count; verify against your readout'},
+{k:'bg',g:2,l:'Matrix background mean I_bg',u:'a.u.',d:0.02,lo:0,hi:0.2,t:'[A] sap/chlorophyll offset assumption'},
+{k:'sig_m',g:2,l:'Matrix background SD',u:'a.u.',d:0.01,lo:0,hi:0.1,t:'[A] assumption'},
+{k:'sig_r',g:2,l:'Reader noise floor σ',u:'a.u.',d:0.005,lo:-3.3,hi:-1.3,lg:1,t:'[A] reader/camera noise assumption'},
+{k:'prev',g:3,l:'Infection prevalence',u:'fraction',d:0.1,lo:-3,hi:-0.05,lg:1,t:'[U] vineyard prevalence varies; set from surveys'},
+{k:'z',g:3,l:'Decision threshold z',u:'σ above bg',d:3,lo:0,hi:6,t:'[A] classifier cut in noise units'},
+{k:'sig_ln',g:3,l:'Between-plant titer spread',u:'ln SD',d:1,lo:0.1,hi:3,t:'[U] lognormal assumption'},
+{k:'id95',g:3,l:'Critical infective dose (95%)',u:'virions',d:1000,lo:0,hi:6,lg:1,t:'[U] Poisson P=1−exp(−3d/ID95) [11]; reference only, not in Bayes step'}
+];
+const $=id=>document.getElementById(id);
+const fmt=v=>!isFinite(v)?'n/a':v===0?'0':(Math.abs(v)>=1e4||Math.abs(v)<1e-2)?v.toExponential(2):v.toPrecision(3);
+const GN=['Sample and virus','Binding and transport','Readout and noise','Population and decision'];
+$('ctl').innerHTML=GN.map((g,i)=>'<div class="card"><h2>'+g+'</h2>'+DEF.filter(d=>d.g===i).map(d=>{
+ const v0=d.lg?Math.log10(d.d):d.d;
+ return '<div class="p"><label>'+d.l+'<span class="tag">'+d.u+'</span></label><output id="o_'+d.k+'"></output><input type="range" id="s_'+d.k+'" min="'+d.lo+'" max="'+d.hi+'" step="'+(d.lg?0.01:(d.hi-d.lo)/400)+'" value="'+v0+'"><small>'+d.t+'</small></div>';
+}).join('')+'</div>').join('');
+document.querySelectorAll('input[type=range]').forEach(e=>e.addEventListener('input',run));
+
+function getP(){
+ const P={};
+ DEF.forEach(d=>{const r=+$('s_'+d.k).value;P[d.k]=d.lg?10**r:r;$('o_'+d.k).textContent=fmt(P[d.k]);});
+ const MW=P.cp*P.ncp;
+ P.D=4e-11*Math.cbrt(150/MW);      // Stokes–Einstein scaling from 150 kDa reference [2]
+ P.dm=P.delta*1e-6; P.Kd=P.kd*1e-9; P.Ch=P.hook*1e-9;
+ return P;
+}
+function model(P,t){
+ const N=t*P.m*P.eta, C=N/(NA*P.vb*1e-3), th=C/(C+P.Kd);
+ const tau=1/(P.kon*C+P.Kd*P.kon), kin=1-Math.exp(-P.tinc*60/tau);
+ const Da=P.kon*C*P.dm*P.dm/P.D, tr=Da>1?1/Da:1;
+ const hk=P.hook>0?1/(1+C/P.Ch):1;
+ const Nb=Math.min(N,P.sites*P.act*th*kin*tr*hk), S=P.iu*Nb;
+ return{N,C,th,tau,kin,Da,tr,hk,Nb,S,I:P.bg+S};
+}
+function erf(x){const s=Math.sign(x);x=Math.abs(x);const t=1/(1+0.3275911*x);
+ return s*(1-((((1.061405429*t-1.453152027)*t+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x));}
+const Q=x=>0.5*(1-erf(x/Math.SQRT2));
+function perf(P,z){
+ const sn=Math.hypot(P.sig_r,P.sig_m);let se=0,w=0;
+ for(let i=-40;i<=40;i++){const s=i/10,wi=Math.exp(-s*s/2),S=model(P,P.rho*Math.exp(s*P.sig_ln)).S;se+=wi*Q(z-S/sn);w+=wi;}
+ return{se:se/w,fpr:Q(z)};
+}
+function lod(P){
+ const f=t=>model(P,10**t).Nb-P.nvis;let a=-3,b=15;
+ if(f(a)>=0||f(b)<0)return NaN;
+ for(let i=0;i<70;i++){const m=(a+b)/2;if(f(m)<0)a=m;else b=m;}
+ return 10**b;
+}
+function legend(id,o){
+ const items=[...o.s.map(s=>[s.c,s.n,s.d]),...(o.h||[]).map(([y,c,t])=>[c,t,[4,3]]),...(o.v||[]).map(([x,c,t])=>[c,t,[4,3]])];
+ $('lg_'+id).innerHTML=items.map(([c,n,d])=>'<span><i style="'+(d?'border-top:2px dashed '+c:'border-top:3px solid '+c)+'"></i>'+n+'</span>').join('');
+}
+function plot(id,o){
+ legend(id,o);
+ const cv=$(id),dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+ cv.width=w*dpr;cv.height=h*dpr;const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+ const col=getComputedStyle(cv).color,L=50,R=12,T=12,B=32,W=w-L-R,H=h-T-B;
+ const X=v=>L+((o.lx?Math.log10(v):v)-o.x0)/(o.x1-o.x0)*W;
+ const Y=v=>T+(1-(Math.min(Math.max(v,o.y0),o.y1)-o.y0)/(o.y1-o.y0))*H;
+ g.font='11px system-ui';g.fillStyle=col;g.strokeStyle='rgba(128,128,128,.3)';g.lineWidth=1;
+ const xt=[];
+ if(o.lx)for(let k=Math.ceil(o.x0);k<=o.x1;k++)xt.push([k,'1e'+k]);
+ else for(let i=0;i<=4;i++){const v=o.x0+i*(o.x1-o.x0)/4;xt.push([v,v.toFixed(1)]);}
+ xt.forEach(([v,lab])=>{const px=L+(v-o.x0)/(o.x1-o.x0)*W;g.beginPath();g.moveTo(px,T);g.lineTo(px,T+H);g.stroke();g.fillText(lab,px-10,h-B+14);});
+ for(let i=0;i<=4;i++){const v=o.y0+i*(o.y1-o.y0)/4,py=Y(v);g.beginPath();g.moveTo(L,py);g.lineTo(L+W,py);g.stroke();g.fillText(v.toPrecision(2),4,py+4);}
+ g.fillText(o.xl,L+W/2-80,h-4);
+ const xa=o.s[0].x[0],xb=o.s[0].x[o.s[0].x.length-1];
+ const line=(xs,ys,c,d)=>{g.beginPath();g.strokeStyle=c;g.lineWidth=2;g.setLineDash(d||[]);xs.forEach((x,i)=>i?g.lineTo(X(x),Y(ys[i])):g.moveTo(X(x),Y(ys[i])));g.stroke();g.setLineDash([]);};
+ o.s.forEach(s=>line(s.x,s.y,s.c,s.d));
+ (o.v||[]).forEach(([x,c,t])=>{if(!isFinite(x))return;line([x,x],[o.y0,o.y1],c,[4,3]);g.fillStyle=c;g.fillText(t,X(x)+4,T+12);g.fillStyle=col;});
+ (o.h||[]).forEach(([y,c,t])=>{line([xa,xb],[y,y],c,[4,3]);g.fillStyle=c;g.fillText(t,L+6,Y(y)-4);g.fillStyle=col;});
+}
+function tests(){
+ const Tc=[
+  ['θ(C=K_d) = 0.5',()=>1e-9/(1e-9+1e-9),0.5,1e-9],
+  ['Poisson P95 at d=ID95 = 0.95',()=>1-Math.exp(-3),0.9502,1e-3],
+  ['Damköhler, k_on 1e6, C 1 nM, δ 50 µm, D 4e-11 = 0.0625',()=>1e6*1e-9*(50e-6)**2/4e-11,0.0625,1e-4],
+  ['Q(1.96) ≈ 0.025',()=>Q(1.96),0.025,1e-3],
+  ['6.022e20 virions in 1 mL = 1 mM',()=>6.02214076e20/(NA*1e-3),1e-3,1e-9],
+  ['D at 150 kDa = 4e-11 m²/s',()=>4e-11*Math.cbrt(150/150),4e-11,1e-15],
+  ['Bayes PPV (Se 0.9, FPR 0.05, p 0.1) = 0.667',()=>0.9*0.1/(0.9*0.1+0.05*0.9),0.6667,1e-3]
+ ];
+ $('tests').innerHTML=Tc.map(([n,f,e,tol])=>{const v=f(),ok=Math.abs(v-e)<=tol;return '<div class="p"><label>'+n+'</label><output class="'+(ok?'pass':'fail')+'">'+(ok?'PASS':'FAIL')+' ('+fmt(v)+')</output></div>';}).join('');
+}
+function run(){
+ const P=getP(),M=model(P,P.rho),L=lod(P),sn=Math.hypot(P.sig_r,P.sig_m),pf=perf(P,P.z);
+ const Lx=isFinite(L)?L*P.m*P.eta:NaN;
+ const ppv=pf.se*P.prev/(pf.se*P.prev+pf.fpr*(1-P.prev));
+ const npv=(1-pf.fpr)*(1-P.prev)/((1-pf.fpr)*(1-P.prev)+(1-pf.se)*P.prev);
+ const CL=isFinite(Lx)?Lx/(NA*P.vb*1e-3)*1e15:NaN;
+ const kp=[
+  ['LOD, tissue',isFinite(L)?fmt(L)+' virions/g':'not reached'],
+  ['LOD, extract',isFinite(Lx)?fmt(Lx)+' virions':'–'],
+  ['LOD, concentration',isFinite(CL)?fmt(CL)+' fM':'–'],
+  ['Reference signal at titer slider',fmt(M.S)+' a.u. (θ = '+fmt(M.th)+')'],
+  ['Sensitivity Se at z',(pf.se*100).toFixed(1)+'%'],
+  ['False positive rate at z',(pf.fpr*100).toFixed(2)+'%'],
+  ['PPV at prevalence',(ppv*100).toFixed(1)+'%'],
+  ['NPV at prevalence',(npv*100).toFixed(1)+'%'],
+  ['Poisson inoculum for 95% infection (ref.)',fmt(P.id95)+' virions']
+ ];
+ $('kpi').innerHTML=kp.map(([a,b])=>'<div class="p"><label>'+a+'</label><output>'+b+'</output></div>').join('');
+ const W=[];
+ if(P.kon>1e9)W.push('k_on exceeds the diffusion-limited ceiling (~10⁹ M⁻¹s⁻¹). Physically implausible.');
+ if(P.Kd<1e-12)W.push('K_d below ~1 pM is outside typical antibody and aptamer ranges. Verify independently.');
+ if(P.Kd*P.kon>1)W.push('k_off above 1 s⁻¹: complexes dissociate in under a second, so capture will not persist.');
+ if(M.Da>1)W.push('Transport-limited (Da = '+fmt(M.Da)+'): binding outpaces diffusion. The kinetic term is approximated as 1/Da.');
+ if(isFinite(Lx)&&Lx<1)W.push('LOD is below one virion in the extract. Physically implausible; titer and extraction assumptions are inconsistent.');
+ if(!isFinite(L))W.push('Visual threshold not reached within 10⁻³ to 10¹⁵ virions/g.');
+ if(P.nvis>P.sites*P.act)W.push('Visual threshold exceeds the available active capture sites.');
+ if(M.S>1-P.bg)W.push('Reference signal saturates the readout (clipped at 1).');
+ $('warn').innerHTML=W.length?W.map(w=>'<p class="warn">⚠ '+w+'</p>').join(''):'<p class="warn" style="color:var(--acc)">No implausibility flags for this combination.</p>';
+ const lt=[];for(let i=0;i<=80;i++)lt.push(3+i/10);
+ plot('c_int',{lx:1,x0:3,x1:11,y0:0,y1:1,xl:'virions per g tissue',
+  s:[{x:lt.map(e=>10**e),y:lt.map(e=>model(P,10**e).I),c:'#2f6b4f',n:'Predicted signal'}],
+  h:[[P.bg+P.iu*P.nvis,'#b5560b','visual threshold'],[P.bg+P.z*sn,'#888','decision']],
+  v:isFinite(L)?[[L,'#b5560b','LOD']]:[]});
+ const x0=Math.min(-3,Math.floor(Math.log10(Math.max(M.C*1e9,1e-12))));
+ const cn=[];for(let i=0;i<=80;i++)cn.push(10**(x0+i*(4-x0)/80));
+ plot('c_bind',{lx:1,x0:x0,x1:4,y0:0,y1:1,xl:'analyte concentration (nM)',
+  s:[0.1,1,10].map((f,j)=>({x:cn,y:cn.map(c=>c/(c+P.kd*f)),c:['#7aa8c9','#2f6b4f','#b5560b'][j],n:['K_d × 0.1','K_d (your input)','K_d × 10'][j]})),
+  v:[[M.C*1e9,'#888','extract C']]});
+ const zs=[];for(let i=0;i<=30;i++)zs.push(i/5);
+ const pr=zs.map(z=>perf(P,z));
+ plot('c_roc',{x0:0,x1:6,y0:0,y1:1,xl:'threshold z (σ above background)',
+  s:[{x:zs,y:pr.map(p=>p.se),c:'#2f6b4f',n:'True positive rate (Se)'},{x:zs,y:pr.map(p=>p.fpr),c:'#b5560b',d:[5,3],n:'False positive rate'}],
+  v:[[P.z,'#888','current z']]});
+ const pv=[];for(let i=0;i<=60;i++)pv.push(10**(-3+i*2.7/60));
+ plot('c_ppv',{lx:1,x0:-3,x1:-0.3,y0:0,y1:1,xl:'prevalence',
+  s:[{x:pv,y:pv.map(p=>pf.se*p/(pf.se*p+pf.fpr*(1-p))),c:'#2f6b4f',n:'PPV'},{x:pv,y:pv.map(p=>(1-pf.fpr)*(1-p)/((1-pf.fpr)*(1-p)+(1-pf.se)*p)),c:'#7aa8c9',d:[5,3],n:'NPV'}],
+  v:[[P.prev,'#888','current']]});
+}
+tests();run();
+</script>
+</body></html>
